@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Eye Within Words - Cosmic Reality</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #03060d;
+            overflow: hidden;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* UI Start Screen */
+        #start-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: #03060d;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: opacity 1.5s ease-in-out;
+        }
+
+        #start-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .cosmic-btn {
+            background: linear-gradient(135deg, #00c6ff, #0072ff);
+            border: none;
+            border-radius: 40px;
+            padding: 18px 45px;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: 0 0 25px rgba(0, 198, 255, 0.4);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            outline: none;
+        }
+
+        .cosmic-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 45px rgba(0, 198, 255, 0.8);
+        }
+
+        /* Optional Subtle UI instructions */
+        #ui-layer {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: rgba(180, 220, 255, 0.5);
+            pointer-events: none;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0;
+            transition: opacity 2s ease-in;
+        }
+        #ui-layer.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- UI Overlay -->
+    <div id="start-overlay">
+        <button id="start-btn" class="cosmic-btn">reality theme cosmic l</button>
+    </div>
+
+    <!-- Subtitle Overlay -->
+    <div id="ui-layer">Cosmic Generative Typography <br><span style="font-size: 9px; color: #555;">Move cursor to guide gaze</span></div>
+
+    <!-- Main Rendering Canvas -->
+    <canvas id="mainCanvas"></canvas>
+
+<script>
+/**
+ * THE EYE WITHIN WORDS - Cosmic Reality Theme
+ * A cinematic generative typography animation.
+ */
+
+const startBtn = document.getElementById('start-btn');
+const overlay = document.getElementById('start-overlay');
+const uiLayer = document.getElementById('ui-layer');
+const canvas = document.getElementById('mainCanvas');
+const ctx = canvas.getContext('2d', { alpha: false });
+
+// Virtual Coordinate Space (Fixed high-res bounds so we can zoom in/out smoothly)
+const V_WIDTH = 2400;
+const V_HEIGHT = 1600;
+const V_CX = V_WIDTH / 2;
+const V_CY = V_HEIGHT / 2;
+
+// Thematic Cosmic Quotes
+const COSMIC_QUOTES = [
+    "we are made of stars",
+    "look beyond what you see",
+    "the universe lives within us",
+    "every thought leaves a trace",
+    "consciousness observing itself",
+    "there is more than meets the eye",
+    "what you seek is seeking you",
+    "everything is connected",
+    "infinite worlds inside a single glance",
+    "light remembers where it has been"
+];
+
+const COSMIC_WORDS = [
+    "existence", "perception", "eternity", "wonder", "consciousness", 
+    "clarity", "horizon", "infinity", "presence", "silence", "radiance", 
+    "insight", "mystery", "cosmos", "memory", "origin", "vision", "truth"
+];
+
+// Cosmic Palette
+const PALETTE = {
+    bg: '#03060d',
+    fieldDark: ['#1e3256', '#2a426c', '#324a76', '#182a46'],
+    sclera: ['#f4f8ff', '#d0e0f4', '#e4ecf8', '#b8d4f2'],
+    irisOuter: ['#204eaf', '#186ca8', '#4434a8'],
+    irisMid: ['#00defc', '#16eeda', '#2d9bff', '#7652f8'],
+    irisInner: ['#87faff', '#55ebff', '#b9f5ff', '#a28aff'],
+    pupil: ['#1c2c4e', '#22345a', '#182644'],
+    rim: ['#e8f4ff', '#c4defa', '#accefc']
+};
+
+// Utilities
+const randomRange = (min, max) => Math.random() * (max - min) + min;
+const randomChoice = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const getQuote = (mode = "mixed") => {
+    if (mode === "short") return randomChoice(COSMIC_WORDS);
+    if (Math.random() < 0.4) return randomChoice(COSMIC_WORDS);
+    return randomChoice(COSMIC_QUOTES);
+};
+
+// Pre-rendered offscreen canvases for performance optimization
+const bgCanvas = document.createElement('canvas');
+const masterEyeCanvas = document.createElement('canvas');
+
+// Interaction State
+let mouseX = 0, mouseY = 0;
+let isAnimating = false;
+let animationTime = 0;
+
+// Camera & Gaze
+const CAMERA = {
+    zoom: 1.0,
+    panX: 0,
+    panY: 0,
+    gazeX: 0,
+    gazeY: 0,
+    targetGazeX: 0,
+    targetGazeY: 0
+};
+
+// Blink Controller
+const BLINK = {
+    openness: 1.0,
+    isBlinking: false,
+    startTime: 0,
+    nextBlink: 0,
+    durClose: 150,
+    durHold: 50,
+    durOpen: 250
+};
+
+// Start Sequence
+startBtn.addEventListener('click', () => {
+    overlay.classList.add('hidden');
+    setTimeout(() => {
+        overlay.style.display = 'none';
+        uiLayer.classList.add('visible');
+        if (!isAnimating) {
+            isAnimating = true;
+            BLINK.nextBlink = performance.now() + 2000;
+            requestAnimationFrame(animate);
+        }
+    }, 1500);
+});
+
+// Event Listeners
+window.addEventListener('resize', resizeCanvas);
+window.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+});
+window.addEventListener('touchmove', (e) => {
+    mouseX = e.touches[0].clientX;
+    mouseY = e.touches[0].clientY;
+}, { passive: true });
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    mouseX = canvas.width / 2;
+    mouseY = canvas.height / 2;
+}
+
+// ============================================================================
+// PRE-RENDERING GENERATIVE TYPOGRAPHY
+// ============================================================================
+
+function buildOffscreenGraphics() {
+    // 1. Build Edge-to-Edge Typography Background
+    bgCanvas.width = V_WIDTH;
+    bgCanvas.height = V_HEIGHT;
+    const bCtx = bgCanvas.getContext('2d', { alpha: false });
+    
+    bCtx.fillStyle = PALETTE.bg;
+    bCtx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
+    
+    const rowSpacing = 22;
+    for (let y = -50; y <= V_HEIGHT + 50; y += rowSpacing) {
+        let x = randomRange(0, 40);
+        while (x < V_WIDTH) {
+            const text = getQuote("mixed");
+            const isBold = Math.random() < 0.2;
+            const fontSize = isBold ? 14 : 12;
+            
+            bCtx.font = `${isBold ? 'bold' : 'normal'} ${fontSize}px Arial`;
+            const metrics = bCtx.measureText(text);
+            const w = metrics.width;
+            
+            // Subtle horizontal wave/streamline effect
+            const waveY = y + Math.sin(x * 0.003) * 30;
+            
+            bCtx.fillStyle = randomChoice(PALETTE.fieldDark);
+            bCtx.fillText(text, x, waveY);
+            
+            x += w + randomRange(15, 35);
+        }
+    }
+
+    // 2. Build The Master Eye Interior (Sclera + Iris + Pupil)
+    // We make this size equal to the eye bounding box to easily map it.
+    const EYE_W = 1400;
+    const EYE_H = 1400;
+    masterEyeCanvas.width = EYE_W;
+    masterEyeCanvas.height = EYE_H;
+    const eCtx = masterEyeCanvas.getContext('2d');
+    const ecx = EYE_W / 2;
+    const ecy = EYE_H / 2;
+    
+    const eyeHalfW = 600;
+    const eyeHalfH = 450;
+    const irisRad = eyeHalfH * 1.05;
+
+    // A. Dense Sclera (White/Pale Blue spherical text)
+    for (let i = 0; i < 600; i++) {
+        const u = randomRange(-1, 1);
+        const v = randomRange(-1, 1);
+        if ((u*u + v*v) > 1) continue;
+        
+        const px = ecx + u * eyeHalfW * 0.9;
+        const py = ecy + v * eyeHalfH * 0.9;
+        
+        // Spherical shading calculation
+        const dist = Math.sqrt(u*u + v*v);
+        const shade = Math.max(0.3, 1.0 - (dist * dist * 0.8));
+        
+        eCtx.save();
+        eCtx.translate(px, py);
+        eCtx.rotate(u * 0.2); // curve text toward edges
+        eCtx.font = `bold ${Math.floor(randomRange(10, 18))}px Arial`;
+        eCtx.fillStyle = randomChoice(PALETTE.sclera);
+        eCtx.globalAlpha = shade;
+        eCtx.fillText(getQuote(dist > 0.6 ? "short" : "mixed"), 0, 0);
+        eCtx.restore();
+    }
+
+    // Cutout to prevent sclera text showing behind iris
+    eCtx.globalAlpha = 1.0;
+    eCtx.fillStyle = 'rgba(5, 10, 20, 0.95)';
+    eCtx.beginPath();
+    eCtx.arc(ecx, ecy, irisRad * 0.98, 0, Math.PI * 2);
+    eCtx.fill();
+
+    // B. Iris Concentric Rings
+    for (let rFrac = 0.95; rFrac > 0.35; rFrac -= 0.08) {
+        const rad = irisRad * rFrac;
+        let theta = randomRange(0, Math.PI);
+        while (theta < Math.PI * 2.9) {
+            const word = getQuote(rFrac < 0.6 ? "short" : "mixed");
+            const isBold = Math.random() < 0.3;
+            const fSize = 10 + (1.0 - rFrac) * 8;
+            eCtx.font = `${isBold ? 'bold' : 'normal'} ${Math.floor(fSize)}px Arial`;
+            const w = eCtx.measureText(word).width;
+            
+            const px = ecx + rad * Math.cos(theta);
+            const py = ecy + rad * Math.sin(theta);
+            
+            let colList = PALETTE.irisInner;
+            if (rFrac > 0.8) colList = PALETTE.irisOuter;
+            else if (rFrac > 0.5) colList = PALETTE.irisMid;
+            
+            eCtx.save();
+            eCtx.translate(px, py);
+            eCtx.rotate(theta + Math.PI/2); // Tangent to circle
+            eCtx.fillStyle = randomChoice(colList);
+            eCtx.globalAlpha = 0.9;
+            eCtx.fillText(word, -w/2, 0);
+            eCtx.restore();
+            
+            theta += (w + 12) / rad;
+        }
+    }
+
+    // C. Iris Radial Spokes
+    for (let i = 0; i < 180; i++) {
+        const theta = randomRange(0, Math.PI * 2);
+        const rad = randomRange(0.4, 0.9) * irisRad;
+        const px = ecx + rad * Math.cos(theta);
+        const py = ecy + rad * Math.sin(theta);
+        
+        eCtx.save();
+        eCtx.translate(px, py);
+        eCtx.rotate(theta); // Radiating outward
+        eCtx.font = `bold ${Math.floor(randomRange(10, 15))}px Arial`;
+        eCtx.fillStyle = randomChoice(rad > irisRad * 0.65 ? PALETTE.irisMid : PALETTE.irisInner);
+        eCtx.globalAlpha = 0.8;
+        eCtx.fillText(getQuote("short"), 0, 0);
+        eCtx.restore();
+    }
+
+    // D. Pupil (Dense Dark Void text)
+    const pupilRad = irisRad * 0.32;
+    eCtx.fillStyle = '#020408';
+    eCtx.beginPath();
+    eCtx.arc(ecx, ecy, pupilRad * 0.95, 0, Math.PI*2);
+    eCtx.fill();
+    
+    for (let rFrac = 0.8; rFrac > 0.1; rFrac -= 0.15) {
+        const rad = pupilRad * rFrac;
+        let theta = 0;
+        while (theta < Math.PI * 2) {
+            const word = getQuote("short");
+            eCtx.font = `bold ${Math.floor(10 + (1-rFrac)*4)}px Arial`;
+            const w = eCtx.measureText(word).width;
+            
+            const px = ecx + rad * Math.cos(theta);
+            const py = ecy + rad * Math.sin(theta);
+            
+            eCtx.save();
+            eCtx.translate(px, py);
+            eCtx.rotate(theta + Math.PI/2);
+            eCtx.fillStyle = randomChoice(PALETTE.pupil);
+            eCtx.fillText(word, -w/2, 0);
+            eCtx.restore();
+            
+            theta += (w + 8) / Math.max(10, rad);
+        }
+    }
+
+    // Small brilliant catchlights
+    eCtx.fillStyle = '#ffffff';
+    eCtx.font = "bold 14px Arial";
+    eCtx.fillText("light", ecx - irisRad*0.35, ecy - irisRad*0.35);
+    eCtx.fillStyle = '#a28aff';
+    eCtx.fillText("vision", ecx + irisRad*0.3, ecy + irisRad*0.3);
+}
+
+// ============================================================================
+// ANIMATION & LOGIC
+// ============================================================================
+
+function updateLogic(now, dt) {
+    animationTime += dt;
+
+    // 1. Camera Zoom (Cinematic slow sine wave between 0.7x and 1.4x)
+    CAMERA.zoom = 0.95 + Math.sin(animationTime * 0.2) * 0.35;
+    
+    // 2. Mouse Tracking -> Gaze Vector
+    const maxGaze = 80;
+    const nx = (mouseX - canvas.width / 2) / (canvas.width / 2);
+    const ny = (mouseY - canvas.height / 2) / (canvas.height / 2);
+    CAMERA.targetGazeX = Math.max(-1, Math.min(1, nx)) * maxGaze;
+    CAMERA.targetGazeY = Math.max(-1, Math.min(1, ny)) * maxGaze;
+
+    // Smooth gaze interpolation
+    CAMERA.gazeX += (CAMERA.targetGazeX - CAMERA.gazeX) * 3.0 * dt;
+    CAMERA.gazeY += (CAMERA.targetGazeY - CAMERA.gazeY) * 3.0 * dt;
+
+    // 3. Subtle Camera Pan (Drifts opposite to gaze to enhance parallax)
+    CAMERA.panX = -CAMERA.gazeX * 0.8;
+    CAMERA.panY = -CAMERA.gazeY * 0.8;
+
+    // 4. Biological Blinking Logic
+    if (!BLINK.isBlinking && now >= BLINK.nextBlink) {
+        BLINK.isBlinking = true;
+        BLINK.startTime = now;
+        BLINK.durClose = randomRange(100, 150);
+        BLINK.durHold = randomRange(30, 60);
+        BLINK.durOpen = randomRange(200, 300);
+        // Next blink in 3 to 6 seconds
+        BLINK.nextBlink = now + randomRange(3000, 6000);
+    }
+
+    if (BLINK.isBlinking) {
+        const elapsed = now - BLINK.startTime;
+        const total = BLINK.durClose + BLINK.durHold + BLINK.durOpen;
+        
+        if (elapsed < BLINK.durClose) {
+            // Closing (ease out)
+            const u = elapsed / BLINK.durClose;
+            BLINK.openness = Math.max(0.0, 1.0 - (u * u));
+        } else if (elapsed < BLINK.durClose + BLINK.durHold) {
+            // Hold closed
+            BLINK.openness = 0.0;
+        } else if (elapsed < total) {
+            // Opening (ease out)
+            const u = (elapsed - BLINK.durClose - BLINK.durHold) / BLINK.durOpen;
+            BLINK.openness = Math.min(1.0, 1.0 - Math.pow(1.0 - u, 3));
+        } else {
+            // Done blinking
+            BLINK.isBlinking = false;
+            BLINK.openness = 1.0;
+            // 20% chance for a quick double blink
+            if (Math.random() < 0.2) {
+                BLINK.nextBlink = now + 100;
+            }
+        }
+    }
+}
+
+// Bezier control point evaluation for the eye shape based on `openness`
+function buildEyelidPath(context, openness) {
+    const hw = 600; 
+    const hh = 450; 
+    
+    const xLeft = V_CX - hw;
+    const xRight = V_CX + hw;
+    
+    // Arch of the eyelid when fully open
+    const openArchYTop = V_CY - hh * 1.1;
+    const openArchYBot = V_CY + hh * 1.1;
+    
+    // Resting position when fully closed (a gentle downward sloping curve)
+    const closedArchY = V_CY + hh * 0.15;
+    
+    // Interpolate control points based on openness
+    const topCtrlY = closedArchY * (1 - openness) + openArchYTop * openness;
+    const botCtrlY = closedArchY * (1 - openness) + openArchYBot * openness;
+    
+    context.beginPath();
+    context.moveTo(xLeft, V_CY);
+    // Upper lid
+    context.quadraticCurveTo(V_CX, topCtrlY, xRight, V_CY);
+    // Lower lid
+    context.quadraticCurveTo(V_CX, botCtrlY, xLeft, V_CY);
+    context.closePath();
+}
+
+let lastTime = 0;
+function animate(time) {
+    if (!lastTime) lastTime = time;
+    const dt = (time - lastTime) / 1000;
+    lastTime = time;
+
+    updateLogic(time, dt);
+
+    // ================= RENDERING =================
+    
+    // Clear Physical Canvas
+    ctx.fillStyle = PALETTE.bg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.save();
+    
+    // 1. Position Camera Center
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.scale(CAMERA.zoom, CAMERA.zoom);
+    // Translate virtual center + parallax pan back to origin
+    ctx.translate(-V_CX + CAMERA.panX, -V_CY + CAMERA.panY);
+
+    // 2. Draw Full Canvas Background Typography
+    // Ensure we don't see edges by drawing it slightly larger if panning
+    ctx.drawImage(bgCanvas, 0, 0);
+
+    // 3. Draw The Eye
+    if (BLINK.openness > 0.02) {
+        ctx.save();
+        
+        // Define eyelid clipping mask
+        buildEyelidPath(ctx, BLINK.openness);
+        ctx.clip();
+        
+        // Draw Pre-rendered Master Eye, offsetting it inside the mask to simulate gaze
+        const eyeCanvasCX = masterEyeCanvas.width / 2;
+        const eyeCanvasCY = masterEyeCanvas.height / 2;
+        
+        // Map Gaze vector (affects Sclera & Iris)
+        const gazeOffsetX = CAMERA.gazeX * 1.2;
+        const gazeOffsetY = CAMERA.gazeY * 1.2;
+
+        ctx.drawImage(
+            masterEyeCanvas, 
+            V_CX - eyeCanvasCX + gazeOffsetX, 
+            V_CY - eyeCanvasCY + gazeOffsetY
+        );
+        
+        ctx.restore();
+    }
+
+    // 4. Draw Luminous Eyelid Rim Lines
+    // This frames the clipping path nicely and makes the blink feel cohesive
+    ctx.save();
+    buildEyelidPath(ctx, BLINK.openness);
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = `rgba(180, 220, 255, ${Math.max(0.2, BLINK.openness * 0.8)})`;
+    ctx.stroke();
+    
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(0.4, BLINK.openness)})`;
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.restore(); // Restore Camera Transform
+
+    requestAnimationFrame(animate);
+}
+
+// Boot up sequence
+resizeCanvas();
+buildOffscreenGraphics();
+
+</script>
+</body>
+</html>
